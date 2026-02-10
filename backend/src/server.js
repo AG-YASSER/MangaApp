@@ -1,6 +1,7 @@
 import express from "express";
 import dotenv from "dotenv";
 import connectDB from "./config/database.js";
+import userRoutes from './routes/userRoutes.js';
 
 
 dotenv.config();
@@ -10,14 +11,8 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 server.use(express.json());
 
-// Routes
-server.get("/", (req, res) => {
-  res.send("Hello from backend!");
-});
-
-server.get("/", (req, res) => {
-  res.send("Hello from the backend!");
-});
+// 3. Use routes
+server.use('/api/users', userRoutes);
 
 // Start Server only after DB connection
 const startServer = async () => {
