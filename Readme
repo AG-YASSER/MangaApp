@@ -1,0 +1,14 @@
+backend setup : 
+# This creates package.json file
+npm init -y
+# Install Express (The Framework)
+npm install express
+# install nodemon (The Dev Dependency)
+npm install nodemon --save-dev
+# Add start script to package.json
+# "start": "node server.js" 
+now we can start the server using "npm start" command
+# add dotenv to manage environment variables
+npm install dotenv
+# Cloud MongoDB
+npm install mongoose dotenv
