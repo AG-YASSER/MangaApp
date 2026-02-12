@@ -1,26 +1,27 @@
-import express from "express";
 import dotenv from "dotenv";
+import express from "express";
 import connectDB from "./config/database.js";
-import userRoutes from './routes/userRoutes.js';
+import authRoutes from './routes/auth.js';
 
 
 dotenv.config();
-const server = express();
+
+const app = express();
 const PORT = process.env.PORT || 3000; 
 
 // Middleware
-server.use(express.json());
+app.use(express.json());
 
-// 3. Use routes
-server.use('/api/users', userRoutes);
+app.use('/api/auth', authRoutes);
+
 
 // Start Server only after DB connection
 const startServer = async () => {
   await connectDB();
 
-  server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+  app.listen(PORT,
+    () => console.log(`Server running on port ${PORT}`)
+  ); 
 };
 
 startServer();

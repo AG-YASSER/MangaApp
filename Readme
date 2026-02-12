@@ -12,3 +12,15 @@ now we can start the server using "npm start" command
 npm install dotenv
 # Cloud MongoDB
 npm install mongoose dotenv
+# to hash passwords
+npm install bcrypt
+#  for authentication with firebase
+npm install firebase
+# Install Firebase Admin
+npm install firebase-admin
+# to handle CORS (Cross-Origin Resource Sharing)
+npm install cors
+# Install Firebase CLI
+npm install -g firebase-tools
+# install nodemailer for sending emails
+npm install nodemailer
