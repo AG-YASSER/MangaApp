@@ -24,3 +24,5 @@ npm install cors
 npm install -g firebase-tools
 # install nodemailer for sending emails
 npm install nodemailer
+# cookie-parser to parse cookies
+npm install cookie-parser

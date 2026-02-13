@@ -1,39 +1,61 @@
-import nodemailer from 'nodemailer';
+import dotenv from "dotenv";
+dotenv.config();
 
-export const sendVerificationEmail = async (email, link) => {
+import nodemailer from "nodemailer";
+
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
+});
+
+const sendEmail = async ({ to, subject, html }) => {
   try {
-    // Create transporter EVERY TIME the function is called
-    const transporter = nodemailer.createTransport({
-      service: 'gmail',
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS
-      }
+    const info = await transporter.sendMail({
+      from: `"Manga App" <${process.env.EMAIL_USER}>`,
+      to,
+      subject,
+      html,
     });
 
-    const mailOptions = {
-      from: `"Manga App" <${process.env.EMAIL_USER}>`,
-      to: email,
-      subject: 'Verify Your Email',
-      html: `
-        <h1>Welcome!</h1>
-        <p>Click the link below to verify your email:</p>
-        <a href="${link}">${link}</a>
-        <p>This link expires in 24 hours.</p>
-      `
-    };
-
-    const info = await transporter.sendMail(mailOptions);
-    console.log('✅ Email sent successfully!');
-    console.log('📧 To:', email);
-    console.log('🆔 Message ID:', info.messageId);
+    console.log("Email sent:", subject, "→", to);
     return info;
-    
   } catch (error) {
-    console.error('❌ Email error details:');
-    console.error('Error code:', error.code);
-    console.error('Error message:', error.message);
-    console.error('Full error:', error);
+    console.error("Email sending failed:", error.message);
     throw error;
   }
+};
+
+// ===============================
+// ✅ Verification Email
+// ===============================
+export const sendVerificationEmail = (email, link) => {
+  return sendEmail({
+    to: email,
+    subject: "Verify Your Email",
+    html: `
+      <h1>Welcome!</h1>
+      <p>Click below to verify your email:</p>
+      <a href="${link}">Verify Email</a>
+      <p>This link expires in 24 hours.</p>
+    `,
+  });
+};
+
+// ===============================
+// ✅ Password Reset Email
+// ===============================
+export const sendPasswordResetEmail = (email, link, username) => {
+  return sendEmail({
+    to: email,
+    subject: "Reset Your Password",
+    html: `
+      <h1>Hello ${username}</h1>
+      <p>Click below to reset your password:</p>
+      <a href="${link}">Reset Password</a>
+      <p>This link expires in 24 hours.</p>
+    `,
+  });
 };

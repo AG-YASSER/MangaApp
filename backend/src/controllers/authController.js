@@ -1,6 +1,6 @@
 import admin from "../config/firebase.js";
 import User from "../models/User.js";
-import { sendVerificationEmail } from "../utils/email.js";
+import { sendVerificationEmail, sendPasswordResetEmail } from "../utils/email.js";
 
 export const register = async (req, res) => {
   try {
@@ -146,11 +146,6 @@ export const login = async (req, res) => {
     const decodedToken = await admin.auth().verifyIdToken(data.idToken);
     const emailVerified = decodedToken.email_verified; // true or false
 
-    console.log("🔥 EMAIL VERIFIED STATUS:", {
-      fromData: data.emailVerified, // ❌ Sometimes undefined
-      fromToken: emailVerified, // ✅ Always correct
-    });
-
     // ============ ✅ CHANGE 2: CHECK EMAIL VERIFICATION ============
     if (!emailVerified) {
       // Use token value, not data.emailVerified
@@ -202,19 +197,30 @@ export const login = async (req, res) => {
       });
     }
 
+    // ============ ✅ CREATE SESSION COOKIE ============
+    const expiresIn = 5 * 24 * 60 * 60 * 1000; // 5 days
+
+    const sessionCookie = await admin
+      .auth()
+      .createSessionCookie(data.idToken, { expiresIn });
+
+    // ✅ Send cookie to client
+    res.cookie("session", sessionCookie, {
+      httpOnly: true, // JS can't access it
+      secure: true, // true in production (HTTPS)
+      sameSite: "strict",
+      maxAge: expiresIn,
+    });
+
     // ============ 6. RETURN SUCCESS ============
     res.json({
       success: true,
-      message: "Login successful",
-      token: data.idToken,
+      message: "Login successful (Session Created)",
       user: {
         id: user._id,
         email: user.email,
         username: user.username,
         role: user.role,
-        avatar: user.avatar,
-        tokensBalance: user.tokensBalance,
-        emailVerified: true,
       },
     });
   } catch (error) {
@@ -222,6 +228,107 @@ export const login = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Login failed. Please try again.",
+    });
+  }
+};
+
+export const logout = async (req, res) => {
+  try {
+    // 1️⃣ Get UID from session
+    const uid = req.user.uid;
+    console.log(req.user);
+
+    // 2️⃣ Revoke all refresh tokens (kills sessions immediately)
+    await admin.auth().revokeRefreshTokens(uid);
+
+    // 3️⃣ Clear cookie from browser
+    res.clearCookie("session");
+
+    res.json({
+      success: true,
+      message: "Logout successful. Session revoked.",
+    });
+  } catch (error) {
+    console.error("Logout error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Logout failed",
+    });
+  }
+};
+
+export const forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ 
+        message: "Email is required" 
+      });
+    }
+
+    // 1. Check if user exists in MongoDB
+    const user = await User.findOne({ email });
+    
+    if (!user) {
+      return res.status(404).json({ 
+        message: "No account found with this email" 
+      });
+    }
+
+    // 2. Generate REAL password reset link
+    const resetLink = await admin
+      .auth()
+      .generatePasswordResetLink(email);  // ✅ Correct method!
+
+    // 3. Send email with username from database
+    await sendPasswordResetEmail(email, resetLink, user.username);
+
+    // 4. ALWAYS return same message (security best practice)
+    res.json({
+      success: true,
+      message: "If an account exists with this email, you will receive a password reset link."
+    });
+
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    
+    // Don't reveal if user exists or not
+    res.status(500).json({
+      success: false,
+      message: "Something went wrong. Please try again."
+    });
+  }
+};
+export const changePassword = async (req, res) => {
+  try {
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 6) {
+      return res.status(400).json({
+        message: "Password must be at least 6 characters",
+      });
+    }
+
+    // UID from session cookie
+    const uid = req.user.uid;
+
+    // Update password in Firebase
+    await admin.auth().updateUser(uid, {
+      password: newPassword,
+    });
+
+    return res.json({
+      success: true,
+      message: "Password updated successfully",
+    });
+  } catch (error) {
+    console.error("Change password error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to update password",
     });
   }
 };
