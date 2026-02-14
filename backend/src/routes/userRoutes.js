@@ -4,7 +4,8 @@ import { getMe, updateMe, deleteMe } from "../controllers/userController.js";
 
 const router = express.Router();
 
-router.route("/me")
+router
+  .route("/me")
   .get(protect, getMe)
   .put(protect, updateMe)
   .delete(protect, deleteMe);

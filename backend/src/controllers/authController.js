@@ -5,34 +5,14 @@ import {
   sendPasswordResetEmail,
 } from "../utils/email.js";
 
+/**
+ * REGISTER
+ */
 export const register = async (req, res) => {
   try {
     const { email, password, username } = req.body;
 
-    if (!email || !password || !username) {
-      return res.status(400).json({
-        message: "Email, password and username are required",
-      });
-    }
-
-    if (username.length < 3 || username.length > 30) {
-      return res.status(400).json({
-        message: "Username must be between 3 and 30 characters",
-      });
-    }
-
-    if (!email.includes("@")) {
-      return res.status(400).json({
-        message: "Invalid email address",
-      });
-    }
-
-    if (password.length < 8) {
-      return res.status(400).json({
-        message: "Password must be at least 8 characters",
-      });
-    }
-
+    // Check duplicates in MongoDB
     const existingUsername = await User.findOne({ username });
     if (existingUsername) {
       return res.status(400).json({
@@ -47,6 +27,7 @@ export const register = async (req, res) => {
       });
     }
 
+    // Create user in Firebase
     let firebaseUser;
     try {
       firebaseUser = await admin.auth().createUser({
@@ -65,6 +46,7 @@ export const register = async (req, res) => {
       });
     }
 
+    // Create user in MongoDB
     let newUser;
     try {
       newUser = await User.create({
@@ -86,6 +68,7 @@ export const register = async (req, res) => {
       });
     }
 
+    // Send verification email
     try {
       const link = await admin.auth().generateEmailVerificationLink(email);
       await sendVerificationEmail(email, link);
@@ -113,15 +96,12 @@ export const register = async (req, res) => {
   }
 };
 
+/**
+ * LOGIN
+ */
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res.status(400).json({
-        message: "Email and password are required",
-      });
-    }
 
     const mongoUser = await User.findOne({ email });
 
@@ -165,17 +145,18 @@ export const login = async (req, res) => {
     }
 
     const decodedToken = await admin.auth().verifyIdToken(data.idToken);
-    const emailVerified = decodedToken.email_verified;
 
-    if (!emailVerified) {
+    if (!decodedToken.email_verified) {
       try {
         const link = await admin.auth().generateEmailVerificationLink(email);
         await sendVerificationEmail(email, link);
-      } catch (err) {
+      } catch {
         console.log("Verification email resend failed");
       }
+
       return res.status(403).json({
-        message: "Please verify your email before logging in. A new verification link has been sent.",
+        message:
+          "Please verify your email before logging in. A new verification link has been sent.",
       });
     }
 
@@ -214,7 +195,8 @@ export const login = async (req, res) => {
     res.cookie("session", sessionCookie, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      sameSite:
+        process.env.NODE_ENV === "production" ? "none" : "lax",
       maxAge: expiresIn,
     });
 
@@ -238,6 +220,9 @@ export const login = async (req, res) => {
   }
 };
 
+/**
+ * LOGOUT
+ */
 export const logout = async (req, res) => {
   try {
     const sessionCookie = req.cookies.session;
@@ -246,7 +231,7 @@ export const logout = async (req, res) => {
       try {
         const decoded = await admin.auth().verifySessionCookie(sessionCookie);
         await admin.auth().revokeRefreshTokens(decoded.uid);
-      } catch (_) {}
+      } catch {}
     }
 
     res.clearCookie("session");
@@ -257,22 +242,20 @@ export const logout = async (req, res) => {
   }
 };
 
+/**
+ * FORGOT PASSWORD
+ */
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
-
-    if (!email) {
-      return res.status(400).json({
-        message: "Email is required",
-      });
-    }
 
     const user = await User.findOne({ email });
 
     if (!user) {
       return res.status(200).json({
         success: true,
-        message: "If an account exists with this email, you will receive a password reset link.",
+        message:
+          "If an account exists with this email, you will receive a password reset link.",
       });
     }
 
@@ -281,7 +264,8 @@ export const forgotPassword = async (req, res) => {
 
     res.json({
       success: true,
-      message: "If an account exists with this email, you will receive a password reset link.",
+      message:
+        "If an account exists with this email, you will receive a password reset link.",
     });
   } catch (error) {
     console.error("Forgot password error:", error);
@@ -292,16 +276,12 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
+/**
+ * CHANGE PASSWORD
+ */
 export const changePassword = async (req, res) => {
   try {
     const { newPassword } = req.body;
-
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({
-        message: "Password must be at least 6 characters",
-      });
-    }
-
     const uid = req.user.uid;
 
     await admin.auth().updateUser(uid, {
@@ -309,6 +289,7 @@ export const changePassword = async (req, res) => {
     });
 
     res.clearCookie("session");
+
     return res.json({
       success: true,
       message: "Password updated successfully. Please log in again.",

@@ -26,3 +26,7 @@ npm install -g firebase-tools
 npm install nodemailer
 # cookie-parser to parse cookies
 npm install cookie-parser
+# for rate limiting to prevent brute-force attacks
+npm install express-rate-limit
+# Request Validation
+npm install express-validator

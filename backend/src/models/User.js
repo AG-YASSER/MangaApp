@@ -1,3 +1,21 @@
+import mongoose from 'mongoose';
+const userSchema = new mongoose.Schema({
+  firebaseUid: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true },
+  emailVerified: { type: Boolean, default: false },
+  username: { type: String, required: true, unique: true },
+  displayName: { type: String, trim: true, maxlength: 50 },
+  avatar: { type: String, default: 'default-avatar.png' },
+  role: { type: String, enum: ['user', 'mod', 'admin'], default: 'user' },
+  isBanned: { type: Boolean, default: false },
+  tokensBalance: { type: Number, default: 0 },
+  lastLogin: { type: Date, default: Date.now }
+}, { timestamps: true });
+
+const User = mongoose.model('User', userSchema);
+export default User;
+
+
 /* import mongoose from 'mongoose';
 
 const userSchema = new mongoose.Schema({
@@ -306,20 +324,4 @@ const User = mongoose.model('User', userSchema);
 export default User; */
 
 
-import mongoose from 'mongoose';
 
-const userSchema = new mongoose.Schema({
-  firebaseUid: { type: String, required: true, unique: true },
-  email: { type: String, required: true, unique: true },
-  emailVerified: { type: Boolean, default: false },
-  username: { type: String, required: true, unique: true },
-  displayName: { type: String, trim: true, maxlength: 50 },
-  avatar: { type: String, default: 'default-avatar.png' },
-  role: { type: String, enum: ['user', 'mod', 'admin'], default: 'user' },
-  isBanned: { type: Boolean, default: false },
-  tokensBalance: { type: Number, default: 0 },
-  lastLogin: { type: Date, default: Date.now }
-}, { timestamps: true });
-
-const User = mongoose.model('User', userSchema);
-export default User;
