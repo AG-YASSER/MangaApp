@@ -28,9 +28,6 @@ const sendEmail = async ({ to, subject, html }) => {
   }
 };
 
-// ===============================
-// ✅ Verification Email
-// ===============================
 export const sendVerificationEmail = (email, link) => {
   return sendEmail({
     to: email,
@@ -44,9 +41,6 @@ export const sendVerificationEmail = (email, link) => {
   });
 };
 
-// ===============================
-// ✅ Password Reset Email
-// ===============================
 export const sendPasswordResetEmail = (email, link, username) => {
   return sendEmail({
     to: email,
