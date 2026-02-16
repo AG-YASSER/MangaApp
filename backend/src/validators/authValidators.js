@@ -1,8 +1,6 @@
 import { body } from "express-validator";
 
-/**
- * Register Validation Rules
- */
+
 export const registerValidator = [
   body("email")
     .trim()
@@ -34,9 +32,7 @@ export const registerValidator = [
     .withMessage("Username can only contain letters, numbers, and underscores")
 ];
 
-/**
- * Login Validation Rules
- */
+
 export const loginValidator = [
   body("email")
     .trim()
@@ -51,9 +47,7 @@ export const loginValidator = [
     .withMessage("Password is required")
 ];
 
-/**
- * Forgot Password Validation Rules
- */
+
 export const forgotPasswordValidator = [
   body("email")
     .trim()
@@ -64,9 +58,7 @@ export const forgotPasswordValidator = [
     .normalizeEmail()
 ];
 
-/**
- * Change Password Validation Rules
- */
+
 export const changePasswordValidator = [
   body("newPassword")
     .notEmpty()

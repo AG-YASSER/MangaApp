@@ -1,37 +1,87 @@
-import dotenv from "dotenv";
+// src/server.js - CLEAN VERSION
 import express from "express";
-import connectDB from "./config/database.js";
+import dotenv from "dotenv";
 import cookieParser from "cookie-parser";
-import authRoutes from './routes/authRoutes.js';
-import userRoutes from "./routes/userRoutes.js";
-import rateLimit from "express-rate-limit";
+import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
+import compression from "compression";
 
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200, // 200 requests per IP
-  message: "Too many requests from this IP, please try again later."
-});
-
+// Load env
 dotenv.config();
 
-const app = express();
-const PORT = process.env.PORT || 3000; 
+// Import DB connection
+import connectDB from "./config/database.js";
 
-// Middleware
+// Import routes
+import routes from "./routes/index.js";
+
+// Import middleware
+import { errorHandler } from "./middleware/errorHandler.js";
+import { notFound } from "./middleware/notFound.js";
+
+const app = express();
+const PORT = process.env.PORT || 5000;
+const NODE_ENV = process.env.NODE_ENV || "development";
+
+// ============ MIDDLEWARE (ORDER IS CRITICAL) ============
+
+// 1. Basic middleware - these are safe
 app.use(express.json());
-app.use(globalLimiter);
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-app.use('/api/auth', authRoutes);
-app.use("/api/user", userRoutes);
+// 2. CORS
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  credentials: true,
+}));
 
-// Start Server only after DB connection
+// 3. Security - with safe options
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}));
+
+// 4. Compression
+app.use(compression());
+
+// 5. Logging
+if (NODE_ENV === "development") {
+  app.use(morgan("dev"));
+}
+
+// ============ NO SANITIZE MIDDLEWARE FOR NOW ============
+// We'll add this back AFTER we confirm everything works
+
+// ============ HEALTH CHECK (BEFORE ROUTES) ============
+app.get("/health", (req, res) => {
+  res.json({ 
+    success: true, 
+    message: "Main server is working!",
+    timestamp: new Date().toISOString() 
+  });
+});
+
+// ============ ROUTES ============
+app.use("/api", routes);
+
+// ============ ERROR HANDLING ============
+app.use(notFound);
+app.use(errorHandler);
+
+// ============ START SERVER ============
 const startServer = async () => {
-  await connectDB();
-
-  app.listen(PORT,
-    () => console.log(`Server running on port ${PORT}`)
-  ); 
+  try {
+    await connectDB();
+    app.listen(PORT, () => {
+      console.log(`✅ Server running on port ${PORT}`);
+      console.log(`📍 Health check: http://localhost:${PORT}/health`);
+    });
+  } catch (error) {
+    console.error("Failed to start server:", error);
+    process.exit(1);
+  }
 };
 
 startServer();
