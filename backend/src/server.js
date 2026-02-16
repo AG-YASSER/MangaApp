@@ -6,6 +6,7 @@ import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
 import compression from "compression";
+import './utils/cronJobs.js';
 
 // Load env
 dotenv.config();

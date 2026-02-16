@@ -168,21 +168,78 @@ export const getFeaturedManga = async (req, res) => {
   try {
     const featured = await Manga.find({
       isFeatured: true,
-      featuredUntil: { $gt: new Date() },
       isDeleted: false,
       publicationStatus: "published",
+      $or: [
+        { featuredUntil: { $gt: new Date() } }, // Not expired
+        { featuredUntil: null } // Never expires
+      ]
     })
-      .sort({ sortPriority: -1 })
+      .sort({ sortPriority: -1, createdAt: -1 }) // Higher priority first, then newest
       .limit(10)
       .select("title slug coverImage summary rating");
 
-    res.json({ success: true, featured });
+    res.json({ 
+      success: true, 
+      featured,
+      count: featured.length
+    });
   } catch (error) {
     console.error("Get featured manga error:", error);
-    res.status(500).json({ message: "Failed to load featured manga" });
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to load featured manga" 
+    });
   }
 };
 
+// GET /api/manga/stats - Get manga statistics
+export const getMangaStats = async (req, res) => {
+  try {
+    // Get total count
+    const totalManga = await Manga.countDocuments({ 
+      isDeleted: false, 
+      publicationStatus: "published" 
+    });
+    
+    // Get count by genre
+    const genreStats = await Manga.aggregate([
+      { $match: { isDeleted: false, publicationStatus: "published" } },
+      { $unwind: "$genres" },
+      { $group: { _id: "$genres", count: { $sum: 1 } } },
+      { $sort: { count: -1 } },
+      { $limit: 10 }
+    ]);
+    
+    // Get count by status
+    const statusStats = await Manga.aggregate([
+      { $match: { isDeleted: false, publicationStatus: "published" } },
+      { $group: { _id: "$status", count: { $sum: 1 } } }
+    ]);
+    
+    // Get recently added
+    const recentlyAdded = await Manga.find({ 
+      isDeleted: false, 
+      publicationStatus: "published" 
+    })
+      .sort({ createdAt: -1 })
+      .limit(5)
+      .select("title slug coverImage");
+    
+    res.json({
+      success: true,
+      stats: {
+        total: totalManga,
+        byGenre: genreStats,
+        byStatus: statusStats,
+        recentlyAdded
+      }
+    });
+  } catch (error) {
+    console.error("Get manga stats error:", error);
+    res.status(500).json({ message: "Failed to load manga stats" });
+  }
+};
 // ============ PROTECTED ROUTES (MOD/ADMIN) ============
 
 // POST /api/admin/manga - Create new manga
@@ -373,50 +430,3 @@ export const restoreManga = async (req, res) => {
   }
 };
 
-// GET /api/manga/stats - Get manga statistics
-export const getMangaStats = async (req, res) => {
-  try {
-    // Get total count
-    const totalManga = await Manga.countDocuments({ 
-      isDeleted: false, 
-      publicationStatus: "published" 
-    });
-    
-    // Get count by genre
-    const genreStats = await Manga.aggregate([
-      { $match: { isDeleted: false, publicationStatus: "published" } },
-      { $unwind: "$genres" },
-      { $group: { _id: "$genres", count: { $sum: 1 } } },
-      { $sort: { count: -1 } },
-      { $limit: 10 }
-    ]);
-    
-    // Get count by status
-    const statusStats = await Manga.aggregate([
-      { $match: { isDeleted: false, publicationStatus: "published" } },
-      { $group: { _id: "$status", count: { $sum: 1 } } }
-    ]);
-    
-    // Get recently added
-    const recentlyAdded = await Manga.find({ 
-      isDeleted: false, 
-      publicationStatus: "published" 
-    })
-      .sort({ createdAt: -1 })
-      .limit(5)
-      .select("title slug coverImage");
-    
-    res.json({
-      success: true,
-      stats: {
-        total: totalManga,
-        byGenre: genreStats,
-        byStatus: statusStats,
-        recentlyAdded
-      }
-    });
-  } catch (error) {
-    console.error("Get manga stats error:", error);
-    res.status(500).json({ message: "Failed to load manga stats" });
-  }
-};
