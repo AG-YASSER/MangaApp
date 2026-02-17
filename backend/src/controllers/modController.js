@@ -67,10 +67,17 @@ export const requestDelete = async (req, res) => {
 export const getModContent = async (req, res) => {
   try {
     const { modId } = req.params;
-    const manga = await Manga.find({ createdBy: modId });
-    const chapters = await Chapter.find({ createdBy: modId });
+    const manga = await Manga.find({ createdBy: modId })
+      .select("title coverImage status createdAt")
+      .lean();
+
+    const chapters = await Chapter.find({ createdBy: modId })
+      .select("title number mangaId createdAt")
+      .populate("mangaId", "title") // only get manga title
+      .lean();
     res.json({ success: true, manga, chapters });
-  } catch {
+  } catch (error) {
+    console.log("Error in getModContent:", error);
     res.status(500).json({ message: "Failed to load mod content" });
   }
 };
