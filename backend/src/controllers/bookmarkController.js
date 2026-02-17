@@ -1,4 +1,5 @@
 import Bookmark from "../models/Bookmark.js";
+import mongoose from "mongoose";
 import Manga from "../models/Manga.js";
 
 // GET /api/user/bookmarks - Get user's bookmarks
@@ -140,7 +141,7 @@ export const getBookmarkCollections = async (req, res) => {
     const userId = req.user.id;
 
     const collections = await Bookmark.aggregate([
-      { $match: { userId: mongoose.Types.ObjectId(userId) } },
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
       {
         $group: {
           _id: "$collection",
