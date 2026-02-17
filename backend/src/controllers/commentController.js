@@ -7,11 +7,11 @@ export const getMangaComments = async (req, res) => {
     const { mangaId } = req.params;
     const { chapterId, page = 1, limit = 20 } = req.query;
 
-    const query = { 
+    const query = {
       mangaId,
       isDeleted: false,
     };
-    
+
     if (chapterId) {
       query.chapterId = chapterId;
     }
@@ -61,8 +61,10 @@ export const addComment = async (req, res) => {
       text: text.trim(),
     });
 
-    const populatedComment = await Comment.findById(comment._id)
-      .populate("userId", "username avatar");
+    const populatedComment = await Comment.findById(comment._id).populate(
+      "userId",
+      "username avatar",
+    );
 
     res.status(201).json({
       success: true,
@@ -89,7 +91,7 @@ export const updateComment = async (req, res) => {
     const comment = await Comment.findOneAndUpdate(
       { _id: id, userId },
       { text: text.trim() },
-      { new: true }
+      { new: true },
     ).populate("userId", "username avatar");
 
     if (!comment) {
@@ -115,14 +117,15 @@ export const deleteComment = async (req, res) => {
     const userRole = req.user.role;
 
     // Allow admins/mods to delete any comment
-    const query = userRole === "admin" || userRole === "mod"
-      ? { _id: id }
-      : { _id: id, userId };
+    const query =
+      userRole === "admin" || userRole === "mod"
+        ? { _id: id }
+        : { _id: id, userId };
 
     const comment = await Comment.findOneAndUpdate(
       query,
       { isDeleted: true },
-      { new: true }
+      { new: true },
     );
 
     if (!comment) {
@@ -176,7 +179,7 @@ export const addReply = async (req, res) => {
           chapterId: comment.chapterId,
           userId: userId,
         },
-        actionUrl: comment.chapterId 
+        actionUrl: comment.chapterId
           ? `/chapter/${comment.chapterId}`
           : `/manga/${comment.mangaId}`,
       });
@@ -211,7 +214,7 @@ export const deleteReply = async (req, res) => {
 
     // Find the reply
     const replyIndex = comment.replies.findIndex(
-      r => r._id.toString() === replyId
+      (r) => r._id.toString() === replyId,
     );
 
     if (replyIndex === -1) {
@@ -223,7 +226,9 @@ export const deleteReply = async (req, res) => {
     const isModOrAdmin = userRole === "admin" || userRole === "mod";
 
     if (!isOwner && !isModOrAdmin) {
-      return res.status(403).json({ message: "Not authorized to delete this reply" });
+      return res
+        .status(403)
+        .json({ message: "Not authorized to delete this reply" });
     }
 
     // Remove reply
@@ -240,6 +245,55 @@ export const deleteReply = async (req, res) => {
   }
 };
 
+// PUT /api/comments/:commentId/reply/:replyId - Update reply
+export const updateReply = async (req, res) => {
+  try {
+    const { commentId, replyId } = req.params;
+    const userId = req.user.id;
+    const { text } = req.body;
+
+    if (!text || text.trim().length === 0) {
+      return res.status(400).json({ message: "Reply text is required" });
+    }
+
+    const comment = await Comment.findById(commentId);
+    if (!comment) {
+      return res.status(404).json({ message: "Comment not found" });
+    }
+
+    // Find the reply
+    const reply = comment.replies.find((r) => r._id.toString() === replyId);
+    if (!reply) {
+      return res.status(404).json({ message: "Reply not found" });
+    }
+
+    // Check if user is the owner of the reply
+    if (reply.userId.toString() !== userId.toString()) {
+      return res
+        .status(403)
+        .json({ message: "Not authorized to update this reply" });
+    }
+
+    // Update reply
+    reply.text = text.trim();
+    reply.updatedAt = new Date();
+    await comment.save();
+
+    const updatedComment = await Comment.findById(commentId)
+      .populate("userId", "username avatar")
+      .populate("replies.userId", "username avatar");
+
+    res.json({
+      success: true,
+      message: "Reply updated successfully",
+      comment: updatedComment,
+    });
+  } catch (error) {
+    console.error("Update reply error:", error);
+    res.status(500).json({ message: "Failed to update reply" });
+  }
+};
+
 // POST /api/comments/:id/report - Report a comment
 export const reportComment = async (req, res) => {
   try {
@@ -252,7 +306,7 @@ export const reportComment = async (req, res) => {
         isReported: true,
         $inc: { reportCount: 1 },
       },
-      { new: true }
+      { new: true },
     );
 
     if (!comment) {
@@ -265,7 +319,8 @@ export const reportComment = async (req, res) => {
 
     res.json({
       success: true,
-      message: "Comment reported. Thank you for helping keep our community safe.",
+      message:
+        "Comment reported. Thank you for helping keep our community safe.",
     });
   } catch (error) {
     console.error("Report comment error:", error);
