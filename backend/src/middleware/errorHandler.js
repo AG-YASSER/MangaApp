@@ -1,4 +1,3 @@
-// src/middleware/errorHandler.js
 
 export const errorHandler = (err, req, res, next) => {
   let error = { ...err };
@@ -6,7 +5,6 @@ export const errorHandler = (err, req, res, next) => {
 
   console.error("Error:", err);
 
-  // Mongoose bad ObjectId
   if (err.name === "CastError") {
     const message = "Resource not found";
     return res.status(404).json({
@@ -15,7 +13,6 @@ export const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Mongoose duplicate key
   if (err.code === 11000) {
     const field = Object.keys(err.keyPattern)[0];
     const message = `Duplicate field value: ${field}. Please use another value`;
@@ -25,7 +22,6 @@ export const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Mongoose validation error
   if (err.name === "ValidationError") {
     const message = Object.values(err.errors).map(val => val.message).join(", ");
     return res.status(400).json({
@@ -34,7 +30,6 @@ export const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // JWT errors (though you use Firebase)
   if (err.name === "JsonWebTokenError") {
     return res.status(401).json({
       success: false,
@@ -49,7 +44,6 @@ export const errorHandler = (err, req, res, next) => {
     });
   }
 
-  // Default error
   res.status(error.statusCode || 500).json({
     success: false,
     message: error.message || "Server Error",

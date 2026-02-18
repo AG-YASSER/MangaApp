@@ -69,7 +69,7 @@ export const getModContent = async (req, res) => {
     const { modId } = req.params;
     const manga = await Manga.find({ createdBy: modId })
       .select("title coverImage status createdAt")
-      .lean();
+      .lean(); 
 
     const chapters = await Chapter.find({ createdBy: modId })
       .select("title number mangaId createdAt")

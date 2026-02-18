@@ -5,41 +5,38 @@ import {
   logout,
   forgotPassword,
   changePassword,
+  verifyEmail,
+  resendVerification,
 } from "../controllers/authController.js";
 import {
   registerValidator,
   loginValidator,
   forgotPasswordValidator,
   changePasswordValidator,
+  resendVerificationValidator,
 } from "../validators/authValidators.js";
-import validate from "../middleware/validate.js";
+import { validate } from "../middleware/validate.js";
 import { authMiddleware } from "../middleware/auth.js";
 import rateLimit from "express-rate-limit";
 
 const authLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000,
-  max: 5,
-  message: "Too many login attempts. Try again later.",
+  windowMs: 15 * 60 * 1000, 
+  max: 10, 
+  message: "Too many requests. Please try again later.",
 });
 
 const router = express.Router();
 
-router.post("/register", authLimiter, registerValidator, validate, register);
-router.post("/login", authLimiter, loginValidator, validate, login);
-router.post(
-  "/change-password",
-  authMiddleware,
-  changePasswordValidator,
-  validate,
-  changePassword,
-);
+
+
+router.use(authLimiter);
+
+router.post("/register", registerValidator, validate, register);
+router.post("/login", loginValidator, validate, login);
+router.post("/change-password", authMiddleware, changePasswordValidator, validate, changePassword);
 router.post("/logout", logout);
-router.post(
-  "/forgot-password",
-  authLimiter,
-  forgotPasswordValidator,
-  validate,
-  forgotPassword,
-);
+router.post("/forgot-password", forgotPasswordValidator, validate, forgotPassword);
+router.get("/verify-email", verifyEmail);
+router.post("/resend-verification", resendVerificationValidator, validate, resendVerification);
 
 export default router;
