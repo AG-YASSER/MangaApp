@@ -1,11 +1,17 @@
 import Rating from "../models/Rating.js";
 import Manga from "../models/Manga.js";
+import mongoose from "mongoose";
 
 // GET /api/manga/:mangaId/ratings - Get all ratings for a manga
 export const getMangaRatings = async (req, res) => {
   try {
     const { mangaId } = req.params;
     const { page = 1, limit = 20 } = req.query;
+
+    // Validate mangaId is valid ObjectId
+    if (!mongoose.Types.ObjectId.isValid(mangaId)) {
+      return res.status(400).json({ message: "Invalid manga ID" });
+    }
 
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
@@ -19,7 +25,7 @@ export const getMangaRatings = async (req, res) => {
 
     // Get rating distribution
     const distribution = await Rating.aggregate([
-      { $match: { mangaId: mongoose.Types.ObjectId(mangaId) } },
+      { $match: { mangaId: new mongoose.Types.ObjectId(mangaId) } },
       {
         $group: {
           _id: "$rating",
@@ -29,10 +35,14 @@ export const getMangaRatings = async (req, res) => {
     ]);
 
     const distMap = {
-      1: 0, 2: 0, 3: 0, 4: 0, 5: 0,
+      1: 0,
+      2: 0,
+      3: 0,
+      4: 0,
+      5: 0,
     };
-    
-    distribution.forEach(d => {
+
+    distribution.forEach((d) => {
       distMap[d._id] = d.count;
     });
 
@@ -98,7 +108,9 @@ export const rateManga = async (req, res) => {
     const { rating, review } = req.body;
 
     if (!rating || rating < 1 || rating > 5) {
-      return res.status(400).json({ message: "Rating must be between 1 and 5" });
+      return res
+        .status(400)
+        .json({ message: "Rating must be between 1 and 5" });
     }
 
     // Check if manga exists
@@ -117,10 +129,10 @@ export const rateManga = async (req, res) => {
       existingRating.rating = rating;
       if (review !== undefined) existingRating.review = review;
       await existingRating.save();
-      
+
       // Update manga's rating stats
       await manga.updateRating(rating, oldRating);
-      
+
       result = existingRating;
     } else {
       // Create new rating
@@ -130,10 +142,10 @@ export const rateManga = async (req, res) => {
         rating,
         review: review || "",
       });
-      
+
       // Update manga's rating stats
       await manga.updateRating(rating);
-      
+
       result = newRating;
     }
 
@@ -144,12 +156,14 @@ export const rateManga = async (req, res) => {
     });
   } catch (error) {
     console.error("Rate manga error:", error);
-    
+
     // Handle duplicate key error
     if (error.code === 11000) {
-      return res.status(400).json({ message: "You have already rated this manga" });
+      return res
+        .status(400)
+        .json({ message: "You have already rated this manga" });
     }
-    
+
     res.status(500).json({ message: "Failed to submit rating" });
   }
 };
@@ -161,7 +175,7 @@ export const deleteRating = async (req, res) => {
     const userId = req.user.id;
 
     const rating = await Rating.findOneAndDelete({ userId, mangaId });
-    
+
     if (!rating) {
       return res.status(404).json({ message: "Rating not found" });
     }
@@ -172,13 +186,13 @@ export const deleteRating = async (req, res) => {
       manga.ratingSum -= rating.rating;
       manga.totalRatings -= 1;
       manga.ratingDistribution[rating.rating] -= 1;
-      
+
       if (manga.totalRatings > 0) {
         manga.rating = manga.ratingSum / manga.totalRatings;
       } else {
         manga.rating = 0;
       }
-      
+
       await manga.save();
     }
 
@@ -198,7 +212,7 @@ export const getRatingSummary = async (req, res) => {
     const { mangaId } = req.params;
 
     const manga = await Manga.findById(mangaId).select(
-      "rating totalRatings ratingDistribution"
+      "rating totalRatings ratingDistribution",
     );
 
     if (!manga) {

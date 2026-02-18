@@ -84,3 +84,15 @@ readingHistorySchema.methods.markCompleted = function () {
 
 const ReadingHistory = mongoose.model("ReadingHistory", readingHistorySchema);
 export default ReadingHistory;
+
+
+
+// 1
+// nmber 1
+// mnga "id": "699381ad8225bdc44375e3bd"
+// chptr "_id": "699383fd8225bdc44375e3c3",
+
+// 2
+// nmber 5
+// mnga "id": "69936447799048ce0545543f"
+// chptr "_id": "699383fd8225bdc44375e3c3",

@@ -10,11 +10,11 @@ const purchaseSchema = new mongoose.Schema(
       index: true,
     },
 
-    // WHAT they bought (could be chapter, manga, or plan)
+    // WHAT they bought (could be chapter, manga, subscription, or donation)
     // We use flexible type to handle different purchases
     purchaseType: {
       type: String,
-      enum: ["chapter", "manga", "subscription"], // Could add 'bundle', 'season' later
+      enum: ["chapter", "manga", "subscription", "donation"], // Could add 'bundle', 'season' later
       required: true,
     },
 
@@ -41,10 +41,10 @@ const purchaseSchema = new mongoose.Schema(
     },
 
     // PAYMENT GATEWAY INFO
-    // For when they pay with real money
+    // For when they pay with real money or tokens
     paymentMethod: {
       type: String,
-      enum: ["stripe", "paypal", "apple_pay", "google_pay"],
+      enum: ["stripe", "paypal", "apple_pay", "google_pay", "tokens"],
       default: null,
     },
 

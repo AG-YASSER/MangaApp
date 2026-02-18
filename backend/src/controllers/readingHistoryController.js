@@ -1,4 +1,5 @@
 import ReadingHistory from "../models/ReadingHistory.js";
+import mongoose from "mongoose";
 import Manga from "../models/Manga.js";
 import Chapter from "../models/Chapter.js";
 
@@ -24,7 +25,7 @@ export const getReadingHistory = async (req, res) => {
 
     // Get total reading time
     const timeStats = await ReadingHistory.aggregate([
-      { $match: { userId: mongoose.Types.ObjectId(userId) } },
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
       {
         $group: {
           _id: null,
@@ -53,7 +54,7 @@ export const getReadingHistory = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error("Get reading history error:", error);
+    console.log("Get reading history error:", error);
     res.status(500).json({ message: "Failed to load reading history" });
   }
 };
@@ -92,7 +93,7 @@ export const getRecentManga = async (req, res) => {
 
     // Get unique manga from reading history, sorted by last read
     const recent = await ReadingHistory.aggregate([
-      { $match: { userId: mongoose.Types.ObjectId(userId) } },
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
       { $sort: { updatedAt: -1 } },
       {
         $group: {
@@ -220,7 +221,7 @@ export const getReadingStats = async (req, res) => {
     const dailyStats = await ReadingHistory.aggregate([
       {
         $match: {
-          userId: mongoose.Types.ObjectId(userId),
+          userId: new mongoose.Types.ObjectId(userId),
           updatedAt: { $gte: thirtyDaysAgo },
         },
       },
@@ -238,7 +239,7 @@ export const getReadingStats = async (req, res) => {
 
     // Get genre preferences based on reading history
     const genreStats = await ReadingHistory.aggregate([
-      { $match: { userId: mongoose.Types.ObjectId(userId) } },
+      { $match: { userId: new mongoose.Types.ObjectId(userId) } },
       {
         $lookup: {
           from: "mangas",

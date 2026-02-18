@@ -5,7 +5,7 @@ import {
   addBookmark,
   updateBookmark,
   removeBookmark,
-  getBookmarkCollections,
+  getBookmarkCategories,
   moveBookmark,
 } from "../controllers/bookmarkController.js";
 import { authMiddleware } from "../middleware/auth.js";
@@ -13,11 +13,11 @@ import { authMiddleware } from "../middleware/auth.js";
 const router = express.Router();
 
 // All bookmark routes are protected (require login)
-router.get("/", authMiddleware, getUserBookmarks);              // /api/bookmarks?collection=reading
-router.get("/collections", authMiddleware, getBookmarkCollections);
+router.get("/", authMiddleware, getUserBookmarks); // /api/bookmarks?category=reading
+router.get("/categories", authMiddleware, getBookmarkCategories);
 router.post("/", authMiddleware, addBookmark);
 router.put("/:id", authMiddleware, updateBookmark);
 router.delete("/:id", authMiddleware, removeBookmark);
-router.post("/:id/move", authMiddleware, moveBookmark);        // Move to different collection
+router.post("/:id/move", authMiddleware, moveBookmark); // Move to different category
 
 export default router;

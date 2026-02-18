@@ -24,37 +24,34 @@ const bookmarkSchema = new mongoose.Schema(
     },
 
     // OPTIONAL: Save a page number / section for quick jump
-    // E.g., user bookmarks page 45 of a chapter
     pageNumber: {
       type: Number,
       default: null,
     },
 
-    // A LABEL/FOLDER system
-    // User can organize bookmarks: "To Read", "Favorites", "Reading"
-    collection: {
+    // USER ORGANIZATION CATEGORY
+    category: {
       type: String,
       enum: ["to-read", "reading", "completed", "favorites", "dropped"],
       default: "to-read",
     },
-
-    // PREVENT DUPLICATES
-    // One user can't bookmark same manga twice in same collection
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
-// Unique index: same user can't bookmark same manga twice in same collection
+// Prevent duplicates:
+// One user can't bookmark same manga twice in same category
 bookmarkSchema.index(
-  { userId: 1, mangaId: 1, collection: 1 },
-  { unique: true },
+  { userId: 1, mangaId: 1, category: 1 },
+  { unique: true }
 );
 
-// Common static and instance methods
+// Static methods
 bookmarkSchema.statics.findByUser = function (userId) {
   return this.find({ userId });
 };
 
+// Instance methods
 bookmarkSchema.methods.isForManga = function (mangaId) {
   return this.mangaId.equals(mangaId);
 };

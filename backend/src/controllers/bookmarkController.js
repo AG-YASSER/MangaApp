@@ -2,15 +2,18 @@ import Bookmark from "../models/Bookmark.js";
 import mongoose from "mongoose";
 import Manga from "../models/Manga.js";
 
-// GET /api/user/bookmarks - Get user's bookmarks
+/* ===============================
+   GET /api/user/bookmarks
+================================= */
 export const getUserBookmarks = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { collection } = req.query;
+    const { category } = req.query;
 
     const query = { userId };
-    if (collection) {
-      query.collection = collection;
+
+    if (category) {
+      query.category = category;
     }
 
     const bookmarks = await Bookmark.find(query)
@@ -20,36 +23,51 @@ export const getUserBookmarks = async (req, res) => {
 
     res.json({
       success: true,
+      count: bookmarks.length,
       bookmarks,
     });
   } catch (error) {
     console.error("Get user bookmarks error:", error);
-    res.status(500).json({ message: "Failed to load bookmarks" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to load bookmarks",
+    });
   }
 };
 
-// POST /api/user/bookmarks - Add bookmark
+/* ===============================
+   POST /api/user/bookmarks
+================================= */
 export const addBookmark = async (req, res) => {
   try {
     const userId = req.user.id;
-    const { mangaId, chapterId, pageNumber, collection } = req.body;
+    const { mangaId, chapterId, pageNumber, category = "to-read" } = req.body;
 
-    // Check if manga exists
-    const manga = await Manga.findById(mangaId);
-    if (!manga) {
-      return res.status(404).json({ message: "Manga not found" });
+    if (!mongoose.Types.ObjectId.isValid(mangaId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid manga ID",
+      });
     }
 
-    // Check if bookmark already exists
+    const manga = await Manga.findById(mangaId);
+    if (!manga) {
+      return res.status(404).json({
+        success: false,
+        message: "Manga not found",
+      });
+    }
+
     const existing = await Bookmark.findOne({
       userId,
       mangaId,
-      collection: collection || "to-read",
+      category,
     });
 
     if (existing) {
-      return res.status(400).json({ 
-        message: "Bookmark already exists in this collection" 
+      return res.status(400).json({
+        success: false,
+        message: "Bookmark already exists in this category",
       });
     }
 
@@ -58,11 +76,12 @@ export const addBookmark = async (req, res) => {
       mangaId,
       chapterId: chapterId || null,
       pageNumber: pageNumber || null,
-      collection: collection || "to-read",
+      category,
     });
 
-    // Increment bookmark count on manga
-    await manga.incrementBookmarks();
+    if (typeof manga.incrementBookmarks === "function") {
+      await manga.incrementBookmarks();
+    }
 
     res.status(201).json({
       success: true,
@@ -71,29 +90,46 @@ export const addBookmark = async (req, res) => {
     });
   } catch (error) {
     console.error("Add bookmark error:", error);
-    res.status(500).json({ message: "Failed to add bookmark" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to add bookmark",
+    });
   }
 };
 
-// PUT /api/user/bookmarks/:id - Update bookmark (change collection, etc.)
+/* ===============================
+   PUT /api/user/bookmarks/:id
+================================= */
 export const updateBookmark = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
-    const { collection, chapterId, pageNumber } = req.body;
+    const { category, chapterId, pageNumber } = req.body;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid bookmark ID",
+      });
+    }
+
+    const updateData = {};
+
+    if (category) updateData.category = category;
+    if (chapterId !== undefined) updateData.chapterId = chapterId || null;
+    if (pageNumber !== undefined) updateData.pageNumber = pageNumber || null;
 
     const bookmark = await Bookmark.findOneAndUpdate(
       { _id: id, userId },
-      { 
-        collection: collection || "to-read",
-        chapterId: chapterId || null,
-        pageNumber: pageNumber || null,
-      },
+      updateData,
       { new: true }
     );
 
     if (!bookmark) {
-      return res.status(404).json({ message: "Bookmark not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Bookmark not found",
+      });
     }
 
     res.json({
@@ -103,25 +139,39 @@ export const updateBookmark = async (req, res) => {
     });
   } catch (error) {
     console.error("Update bookmark error:", error);
-    res.status(500).json({ message: "Failed to update bookmark" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to update bookmark",
+    });
   }
 };
 
-// DELETE /api/user/bookmarks/:id - Remove bookmark
+/* ===============================
+   DELETE /api/user/bookmarks/:id
+================================= */
 export const removeBookmark = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
 
-    const bookmark = await Bookmark.findOneAndDelete({ _id: id, userId });
-    
-    if (!bookmark) {
-      return res.status(404).json({ message: "Bookmark not found" });
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid bookmark ID",
+      });
     }
 
-    // Decrement bookmark count on manga
+    const bookmark = await Bookmark.findOneAndDelete({ _id: id, userId });
+
+    if (!bookmark) {
+      return res.status(404).json({
+        success: false,
+        message: "Bookmark not found",
+      });
+    }
+
     const manga = await Manga.findById(bookmark.mangaId);
-    if (manga) {
+    if (manga && typeof manga.decrementBookmarks === "function") {
       await manga.decrementBookmarks();
     }
 
@@ -131,34 +181,38 @@ export const removeBookmark = async (req, res) => {
     });
   } catch (error) {
     console.error("Remove bookmark error:", error);
-    res.status(500).json({ message: "Failed to remove bookmark" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to remove bookmark",
+    });
   }
 };
 
-// GET /api/user/bookmarks/collections - Get all collections with counts
-export const getBookmarkCollections = async (req, res) => {
+/* ===============================
+   GET /api/user/bookmarks/categories
+================================= */
+export const getBookmarkCategories = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    const collections = await Bookmark.aggregate([
+    const categories = await Bookmark.aggregate([
       { $match: { userId: new mongoose.Types.ObjectId(userId) } },
       {
         $group: {
-          _id: "$collection",
+          _id: "$category",
           count: { $sum: 1 },
         },
       },
       {
         $project: {
-          collection: "$_id",
+          category: "$_id",
           count: 1,
           _id: 0,
         },
       },
     ]);
 
-    // Default collections with counts
-    const defaultCollections = [
+    const defaultCategories = [
       "to-read",
       "reading",
       "completed",
@@ -166,8 +220,8 @@ export const getBookmarkCollections = async (req, res) => {
       "dropped",
     ];
 
-    const result = defaultCollections.map(name => {
-      const found = collections.find(c => c.collection === name);
+    const result = defaultCategories.map((name) => {
+      const found = categories.find((c) => c.category === name);
       return {
         name,
         count: found ? found.count : 0,
@@ -176,57 +230,69 @@ export const getBookmarkCollections = async (req, res) => {
 
     res.json({
       success: true,
-      collections: result,
+      categories: result,
     });
   } catch (error) {
-    console.error("Get bookmark collections error:", error);
-    res.status(500).json({ message: "Failed to load collections" });
+    console.error("Get bookmark categories error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to load categories",
+    });
   }
 };
 
-// POST /api/user/bookmarks/:id/move - Move bookmark to different collection
+/* ===============================
+   POST /api/user/bookmarks/:id/move
+================================= */
 export const moveBookmark = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
-    const { toCollection } = req.body;
+    const { toCategory } = req.body;
 
-    if (!toCollection) {
-      return res.status(400).json({ message: "Target collection is required" });
+    if (!toCategory) {
+      return res.status(400).json({
+        success: false,
+        message: "Target category is required",
+      });
     }
 
-    // Check if bookmark exists in target collection already
     const bookmark = await Bookmark.findOne({ _id: id, userId });
+
     if (!bookmark) {
-      return res.status(404).json({ message: "Bookmark not found" });
+      return res.status(404).json({
+        success: false,
+        message: "Bookmark not found",
+      });
     }
 
     const existing = await Bookmark.findOne({
       userId,
       mangaId: bookmark.mangaId,
-      collection: toCollection,
+      category: toCategory,
     });
 
     if (existing) {
-      // If exists, delete this one and keep the existing
       await bookmark.deleteOne();
       return res.json({
         success: true,
-        message: `Moved to ${toCollection} (merged with existing)`,
-      });
-    } else {
-      // Update collection
-      bookmark.collection = toCollection;
-      await bookmark.save();
-      
-      res.json({
-        success: true,
-        message: `Moved to ${toCollection}`,
-        bookmark,
+        message: `Moved to ${toCategory} (merged with existing)`,
       });
     }
+
+    bookmark.category = toCategory;
+    await bookmark.save();
+
+    res.json({
+      success: true,
+      message: `Moved to ${toCategory}`,
+      bookmark,
+    });
   } catch (error) {
     console.error("Move bookmark error:", error);
-    res.status(500).json({ message: "Failed to move bookmark" });
+    res.status(500).json({
+      success: false,
+      message: "Failed to move bookmark",
+    });
   }
 };

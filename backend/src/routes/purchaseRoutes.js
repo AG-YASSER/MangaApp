@@ -8,7 +8,7 @@ import {
   checkMangaAccess,
   checkChapterAccess,
 } from "../controllers/purchaseController.js";
-import { authMiddleware } from "../middleware/auth.js";  // Changed from authMiddleware to protect
+import { authMiddleware } from "../middleware/auth.js"; // Changed from authMiddleware to protect
 
 const router = express.Router();
 

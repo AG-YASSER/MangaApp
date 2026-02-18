@@ -10,30 +10,43 @@ const subscriptionSchema = new mongoose.Schema(
       index: true,
     },
 
-    // WHICH TIER are they on?
+    // WHICH TIER (only premium in new system)
     tier: {
       type: String,
-      enum: ["free", "premium", "pro"],
-      default: "free",
+      enum: ["premium"],
+      default: "premium",
     },
 
     // WHAT ARE THE BENEFITS OF THIS TIER?
-    // This defines what user can do
     benefits: {
-      // How many chapters can they read per day?
-      dailyChapterLimit: Number, // free: 3, premium: 10, pro: unlimited
+      // Profile customization features
+      canAddGifProfile: {
+        type: Boolean,
+        default: true,
+      },
 
-      // Can they access premium content?
-      canAccessPremium: Boolean,
+      canAddBanner: {
+        type: Boolean,
+        default: true,
+      },
 
-      // Discount on purchases (0-100%)
-      discountPercentage: Number,
+      // Reading experience features
+      autoReaderEnabled: {
+        type: Boolean,
+        default: true,
+      },
 
-      // Max offline downloads per month
-      offlineDownloads: Number,
+      // Ad-free experience
+      noAds: {
+        type: Boolean,
+        default: true,
+      },
 
-      // Ad-free experience?
-      noAds: Boolean,
+      // All chapters are free (same for free & premium users)
+      allChaptersFree: {
+        type: Boolean,
+        default: true,
+      },
     },
 
     // PAYMENT & DURATION
@@ -56,16 +69,25 @@ const subscriptionSchema = new mongoose.Schema(
     },
 
     // HOW MUCH DOES THIS TIER COST?
-    // Store cost to show in invoice
-    price: Number, // in USD or tokens
+    price: {
+      type: Number,
+      default: 4.99, // Fixed monthly price
+    },
+
     billingCycle: {
       type: String,
-      enum: ["monthly", "quarterly", "yearly"],
+      enum: ["monthly"],
       default: "monthly",
     },
 
+    // HOW WAS IT PAID?
+    purchaseMethod: {
+      type: String,
+      enum: ["cash", "tokens"],
+      default: "cash", // Stripe payment or tokens
+    },
+
     // IS IT ACTIVE RIGHT NOW?
-    // Easy check: is expiresAt > now?
     isActive: {
       type: Boolean,
       default: true,
@@ -77,8 +99,7 @@ const subscriptionSchema = new mongoose.Schema(
       ref: "Purchase",
     },
 
-    // STRIPE/PAYPAL SUBSCRIPTION ID
-    // For recurring payments and cancellations
+    // STRIPE SUBSCRIPTION ID (for recurring payments)
     stripeSubscriptionId: String,
 
     // IF THEY CANCELLED
@@ -93,7 +114,11 @@ subscriptionSchema.index({ userId: 1, isActive: 1 });
 
 // Common static and instance methods
 subscriptionSchema.statics.findActiveByUser = function (userId) {
-  return this.findOne({ userId, isActive: true });
+  return this.findOne({
+    userId,
+    isActive: true,
+    expiresAt: { $gt: new Date() },
+  });
 };
 
 subscriptionSchema.methods.cancel = function (reason = "") {
