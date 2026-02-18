@@ -3,19 +3,14 @@ import User from "../models/User.js";
 import TempRegistration from "../models/TempRegistration.js";
 import {
   sendVerificationEmail,
-  sendWelcomeEmail,
   sendPasswordResetEmail,
 } from "../utils/email.js";
 import crypto from 'crypto';
 
-/**
- * REGISTER - Step 1: Send verification email, NO account created yet
- */
 export const register = async (req, res) => {
   try {
     const { email, password, username } = req.body;
 
-    // Validate input
     if (!email || !password || !username) {
       return res.status(400).json({
         success: false,
@@ -23,7 +18,6 @@ export const register = async (req, res) => {
       });
     }
 
-    // Check if username already exists in MongoDB
     const existingUsername = await User.findOne({ username });
     if (existingUsername) {
       return res.status(400).json({
@@ -32,29 +26,22 @@ export const register = async (req, res) => {
       });
     }
 
-    // Check if email already exists in Firebase
     try {
       await admin.auth().getUserByEmail(email);
       return res.status(400).json({
         success: false,
         message: "Email already registered",
       });
-    } catch (error) {
-      // Email doesn't exist in Firebase - good, continue
-    }
+    } catch (error) {}
 
-    // Check if there's already a pending verification for this email
     const existingTemp = await TempRegistration.findOne({ email });
     if (existingTemp) {
-      // Delete old temp registration
       await TempRegistration.deleteOne({ email });
     }
 
-    // Generate verification token
     const verificationToken = crypto.randomBytes(32).toString('hex');
-    const tokenExpiry = new Date(Date.now() + 30 * 60 * 1000); // 24 hours
+    const tokenExpiry = new Date(Date.now() + 30 * 60 * 1000);
 
-    // Store in temporary registration
     await TempRegistration.create({
       email,
       password,
@@ -63,10 +50,7 @@ export const register = async (req, res) => {
       tokenExpiry,
     });
 
-    // Create verification link (using localhost for testing)
     const verificationLink = `http://localhost:5000/api/auth/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
-
-    // Send verification email
     await sendVerificationEmail(email, verificationLink, username);
 
     return res.status(200).json({
@@ -84,9 +68,6 @@ export const register = async (req, res) => {
   }
 };
 
-/**
- * VERIFY EMAIL - Step 2: Create account ONLY after email verification
- */
 export const verifyEmail = async (req, res) => {
   try {
     const { token, email } = req.query;
@@ -98,7 +79,6 @@ export const verifyEmail = async (req, res) => {
       });
     }
 
-    // Find temporary registration
     const tempReg = await TempRegistration.findOne({
       email,
       verificationToken: token,
@@ -112,7 +92,6 @@ export const verifyEmail = async (req, res) => {
       });
     }
 
-    // Create user in Firebase
     let firebaseUser;
     try {
       firebaseUser = await admin.auth().createUser({
@@ -131,7 +110,6 @@ export const verifyEmail = async (req, res) => {
       }
     }
 
-    // Create user in MongoDB
     const newUser = await User.create({
       firebaseUid: firebaseUser.uid,
       email: tempReg.email,
@@ -145,13 +123,8 @@ export const verifyEmail = async (req, res) => {
       lastLogin: new Date(),
     });
 
-    // Delete temporary registration
     await TempRegistration.deleteOne({ _id: tempReg._id });
 
-    // Send welcome email
-    await sendWelcomeEmail(tempReg.email, tempReg.username);
-
-    // ✅ RETURN JSON (NO REDIRECT)
     return res.status(200).json({
       success: true,
       message: "Email verified successfully! Account created.",
@@ -165,7 +138,6 @@ export const verifyEmail = async (req, res) => {
   } catch (error) {
     console.error("Email verification error:", error);
     
-    // ✅ RETURN JSON ERROR (NO REDIRECT)
     return res.status(500).json({
       success: false,
       message: "Verification failed. Please try again.",
@@ -173,9 +145,6 @@ export const verifyEmail = async (req, res) => {
   }
 };
 
-/**
- * RESEND VERIFICATION EMAIL
- */
 export const resendVerification = async (req, res) => {
   try {
     const { email } = req.body;
@@ -187,18 +156,14 @@ export const resendVerification = async (req, res) => {
       });
     }
 
-    // Check if email already exists in Firebase
     try {
       await admin.auth().getUserByEmail(email);
       return res.status(400).json({
         success: false,
         message: "This email is already registered. Please login instead.",
       });
-    } catch {
-      // Email doesn't exist - good
-    }
+    } catch {}
 
-    // Find temporary registration
     const tempReg = await TempRegistration.findOne({ email });
     
     if (!tempReg) {
@@ -208,16 +173,13 @@ export const resendVerification = async (req, res) => {
       });
     }
 
-    // Generate new token
     const verificationToken = crypto.randomBytes(32).toString('hex');
     const tokenExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-    // Update temp registration
     tempReg.verificationToken = verificationToken;
     tempReg.tokenExpiry = tokenExpiry;
     await tempReg.save();
 
-    // Send new verification email
     const verificationLink = `http://localhost:5000/api/auth/verify-email?token=${verificationToken}&email=${encodeURIComponent(email)}`;
     await sendVerificationEmail(email, verificationLink, tempReg.username);
 
@@ -235,9 +197,6 @@ export const resendVerification = async (req, res) => {
   }
 };
 
-/**
- * LOGIN - Only allow if email is verified
- */
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -249,7 +208,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Authenticate with Firebase
     const response = await fetch(
       `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${process.env.FIREBASE_API_KEY}`,
       {
@@ -278,10 +236,8 @@ export const login = async (req, res) => {
       });
     }
 
-    // Verify the ID token
     const decodedToken = await admin.auth().verifyIdToken(data.idToken);
 
-    // Check if email is verified
     if (!decodedToken.email_verified) {
       const link = await admin.auth().generateEmailVerificationLink(email);
       await sendVerificationEmail(email, link, decodedToken.displayName || email.split('@')[0]);
@@ -293,7 +249,6 @@ export const login = async (req, res) => {
       });
     }
 
-    // Find user in MongoDB
     let user = await User.findOne({ firebaseUid: decodedToken.uid });
     
     if (!user) {
@@ -356,9 +311,6 @@ export const login = async (req, res) => {
   }
 };
 
-/**
- * LOGOUT
- */
 export const logout = async (req, res) => {
   try {
     const sessionCookie = req.cookies.session;
@@ -382,9 +334,6 @@ export const logout = async (req, res) => {
   }
 };
 
-/**
- * FORGOT PASSWORD
- */
 export const forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -421,9 +370,6 @@ export const forgotPassword = async (req, res) => {
   }
 };
 
-/**
- * CHANGE PASSWORD
- */
 export const changePassword = async (req, res) => {
   try {
     const { newPassword } = req.body;
