@@ -6,6 +6,7 @@ import {
   updateComment,
   deleteComment,
   addReply,
+  updateReply,
   deleteReply,
   reportComment,
 } from "../controllers/commentController.js";
@@ -21,6 +22,7 @@ router.post("/manga/:mangaId", authMiddleware, addComment);
 router.put("/:id", authMiddleware, updateComment);
 router.delete("/:id", authMiddleware, deleteComment);
 router.post("/:id/reply", authMiddleware, addReply);
+router.put("/:commentId/reply/:replyId", authMiddleware, updateReply);
 router.delete("/:commentId/reply/:replyId", authMiddleware, deleteReply);
 router.post("/:id/report", authMiddleware, reportComment);
 
