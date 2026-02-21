@@ -1,0 +1,61 @@
+@import 'tailwindcss';
+
+@font-face {
+  font-family: 'Rubik Light';
+  src: url('./assets/fonts/Rubik-Light.ttf');
+}
+
+@font-face {
+  font-family: 'Rubik Regular';
+  src: url(./assets/fonts/Rubik-Regular.ttf);
+}
+
+@theme {
+  --font-Rubik-Light: 'Rubik Light', 'sans-serif';
+  --font-Rubik-Regular: 'Rubik Regular', 'sans-serif';
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Default Font */
+html {
+  font-size: 16px; /* Base Size */
+}
+
+/* Medium Screens (Tablets) */
+@media (max-width: 768px) {
+  html {
+    font-size: 15px;
+  }
+}
+
+/* Small Screens (Phones) */
+@media (max-width: 440px) {
+  html {
+    font-size: 14px;
+  }
+}
+
+/* Very Small Screens (Very small phones) */
+@media (max-width: 324px) {
+  html {
+    font-size: 13px;
+  }
+}
+
+/* Optional - Ultra small screens */
+@media (max-width: 280px) {
+  html {
+    font-size: 12px;
+  }
+}
+
+@plugin 'tailwind-scrollbar';
+
+html {
+  background-color: #EDF2FB;
+  transition: background-color 0.3s ease-in-out;
+}
+html.dark, html.dark body {
+  background-color: #051923;
+}

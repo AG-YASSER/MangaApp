@@ -49,3 +49,9 @@ npm install express-validator
 ├── nodemailer@8.0.1
 ├── nodemon@3.1.11
 └── xss-clean@0.1.4
+
+
+#to clear vite cache, you can run the following command in your terminal:
+Remove-Item -Recurse -Force ".vite" -ErrorAction SilentlyContinue ; 
+Remove-Item -Recurse -Force "node_modules\.vite" -ErrorAction SilentlyContinue ; 
+Write-Host "Vite cache cleared"
