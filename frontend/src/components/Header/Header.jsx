@@ -1,6 +1,6 @@
 import ThemeToggle from './ThemeToggle'
 import SearchBar from './SearchBar'
-
+import Profile from './Profile'
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Menu } from 'lucide-react'
@@ -53,6 +53,7 @@ function Header() {
         <div className="flex justify-end items-center space-x-4 w-[800px]">
           <SearchBar onMobileSearchChange={setIsMobileSearchActive} />
           <ThemeToggle />
+          <Profile />
         </div>
       </div>
     </nav>
